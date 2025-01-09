@@ -1,6 +1,7 @@
 package com.yozyyy.composeplaytime
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
@@ -35,8 +37,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import com.yozyyy.composeplaytime.ui.theme.ComposePlaytimeTheme
+import kotlin.math.absoluteValue
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +57,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+fun PagerState.calculateCurrentOffsetForPage(page: Int): Float {
+    Log.d("Movie", "currentPage=$currentPage, page=$page, currentPageOffsetFraction=$currentPageOffsetFraction,calculateCurrentOffsetForPage: ${(currentPage - page) + currentPageOffsetFraction}")
+    return (currentPage - page) + currentPageOffsetFraction
 }
 
 @Composable
@@ -84,9 +94,10 @@ fun MainPage(modifier: Modifier = Modifier) {
         pageSpacing = 20.dp,
         contentPadding = PaddingValues(horizontal = 50.dp)
     ) { page ->
+        val pageOffset = pagerState.calculateCurrentOffsetForPage(page)
         MovieCard(
             modifier = Modifier
-                .padding(bottom = 96.dp)
+                .padding(bottom = lerp(96.dp, 56.dp, pageOffset.absoluteValue))
                 .width(260.dp)
                 .height(480.dp)
                 .graphicsLayer {
@@ -95,6 +106,7 @@ fun MainPage(modifier: Modifier = Modifier) {
                     shadowElevation = 30f
                     spotShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
                     ambientShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
+                    scaleY = lerp(1f, 0.9f, pageOffset.absoluteValue)
                 }
                 .background(color = Color.White)
                 .padding(top = 32.dp, start = 32.dp, end = 32.dp),
