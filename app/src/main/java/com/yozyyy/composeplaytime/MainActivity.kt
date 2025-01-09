@@ -5,19 +5,37 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.DefaultShadowColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.yozyyy.composeplaytime.ui.theme.ComposePlaytimeTheme
 
 class MainActivity : ComponentActivity() {
@@ -57,9 +75,92 @@ fun MainPage(modifier: Modifier = Modifier) {
         contentScale = ContentScale.FillWidth,
         alignment = Alignment.TopCenter
     )
+
+    val pagerState = rememberPagerState(pageCount = { movieData.size })
+    HorizontalPager(
+        state = pagerState,
+        modifier = modifier.fillMaxSize(),
+        verticalAlignment = Alignment.Bottom,
+        pageSpacing = 20.dp,
+        contentPadding = PaddingValues(horizontal = 50.dp)
+    ) { page ->
+        MovieCard(
+            modifier = Modifier
+                .padding(bottom = 96.dp)
+                .width(260.dp)
+                .height(480.dp)
+                .graphicsLayer {
+                    clip = true
+                    shape = RoundedCornerShape(130.dp)
+                    shadowElevation = 30f
+                    spotShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
+                    ambientShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
+                }
+                .background(color = Color.White)
+                .padding(top = 32.dp, start = 32.dp, end = 32.dp),
+            page = page,
+            movie = movieData[page]
+        )
+    }
 }
 
-@Preview(showBackground = true)
+@Composable
+fun MovieCard(modifier: Modifier, page: Int, movie: MovieItem) {
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+        ) {
+            Image(
+                painter = painterResource(movie.resId),
+                contentDescription = "",
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(290.dp)
+                    .clip(RoundedCornerShape(100.dp))
+            )
+            Text(
+                text = movie.name,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
+        }
+        BookNow(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(60.dp)
+                .clip(RoundedCornerShape(50.dp))
+                .background(Color.Black)
+        )
+    }
+}
+
+@Composable
+fun BookNow(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "BOOK NOW",
+            color = Color.White,
+            fontSize = 12.sp
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=950px,height=2000px,orientation=portrait,dpi=429"
+)
 @Composable
 fun GreetingPreview() {
     ComposePlaytimeTheme {
