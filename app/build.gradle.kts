@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.yozyyy.composeplaytime"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.yozyyy.composeplaytime"
