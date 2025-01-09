@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -60,33 +62,48 @@ class MainActivity : ComponentActivity() {
 }
 
 fun PagerState.calculateCurrentOffsetForPage(page: Int): Float {
-    Log.d("Movie", "currentPage=$currentPage, page=$page, currentPageOffsetFraction=$currentPageOffsetFraction,calculateCurrentOffsetForPage: ${(currentPage - page) + currentPageOffsetFraction}")
+    Log.d(
+        "Movie",
+        "currentPage=$currentPage, page=$page, currentPageOffsetFraction=$currentPageOffsetFraction,calculateCurrentOffsetForPage: ${(currentPage - page) + currentPageOffsetFraction}"
+    )
     return (currentPage - page) + currentPageOffsetFraction
 }
 
 @Composable
 fun MainPage(modifier: Modifier = Modifier) {
-    Image(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawWithCache {
-                val gradient = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.White),
-                    startY = 0f,
-                    endY = size.height / 1.5f
-                )
-                onDrawWithContent {
-                    drawContent()
-                    drawRect(gradient, blendMode = BlendMode.Lighten)
-                }
-            },
-        painter = painterResource(R.drawable.robot_dreams),
-        contentDescription = "",
-        contentScale = ContentScale.FillWidth,
-        alignment = Alignment.TopCenter
-    )
-
     val pagerState = rememberPagerState(pageCount = { movieData.size })
+    Crossfade(
+        targetState = pagerState.currentPage,
+        animationSpec = tween(500),
+        label = "background image cross fade"
+    ) { currentPage ->
+        val pageOffset = pagerState.currentPageOffsetFraction
+        Image(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = lerp(1f, 1.1f, pageOffset.absoluteValue)
+                    scaleY = lerp(1f, 1.1f, pageOffset.absoluteValue)
+                    translationY = lerp(0f, -20f, pageOffset.absoluteValue)
+                }
+                .drawWithCache {
+                    val gradient = Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.White),
+                        startY = 0f,
+                        endY = size.height / 1.5f
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(gradient, blendMode = BlendMode.Lighten)
+                    }
+                },
+            painter = painterResource(movieData[currentPage].resId),
+            contentDescription = "",
+            contentScale = ContentScale.FillWidth,
+            alignment = Alignment.TopCenter
+        )
+    }
+
     HorizontalPager(
         state = pagerState,
         modifier = modifier.fillMaxSize(),
