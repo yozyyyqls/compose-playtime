@@ -2,6 +2,7 @@ package com.yozyyy.composeplaytime
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -9,21 +10,33 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +47,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.DefaultShadowColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -104,37 +119,53 @@ fun MainPage(modifier: Modifier = Modifier) {
         )
     }
 
-    HorizontalPager(
-        state = pagerState,
-        modifier = modifier.fillMaxSize(),
-        verticalAlignment = Alignment.Bottom,
-        pageSpacing = 20.dp,
-        contentPadding = PaddingValues(horizontal = 50.dp)
-    ) { page ->
-        val pageOffset = pagerState.calculateCurrentOffsetForPage(page)
-        MovieCard(
-            modifier = Modifier
-                .padding(bottom = lerp(96.dp, 56.dp, pageOffset.absoluteValue))
-                .width(260.dp)
-                .height(480.dp)
-                .graphicsLayer {
-                    clip = true
-                    shape = RoundedCornerShape(130.dp)
-                    shadowElevation = 30f
-                    spotShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
-                    ambientShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
-                    scaleY = lerp(1f, 0.9f, pageOffset.absoluteValue)
+    var isExpanded by remember { mutableStateOf(false) }
+    if (!isExpanded) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = modifier.fillMaxSize(),
+            verticalAlignment = Alignment.Bottom,
+            pageSpacing = 20.dp,
+            contentPadding = PaddingValues(horizontal = 50.dp)
+        ) { page ->
+
+            val pageOffset = pagerState.calculateCurrentOffsetForPage(page)
+            MovieCard(
+                modifier = Modifier
+                    .padding(bottom = lerp(96.dp, 56.dp, pageOffset.absoluteValue))
+                    .width(260.dp)
+                    .height(480.dp)
+                    .graphicsLayer {
+                        clip = true
+                        shape = RoundedCornerShape(130.dp)
+                        shadowElevation = 30f
+                        spotShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
+                        ambientShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
+                        scaleY = lerp(1f, 0.9f, pageOffset.absoluteValue)
+                    }
+                    .background(color = Color.White)
+                    .padding(top = 32.dp, start = 32.dp, end = 32.dp),
+                page = page,
+                movie = movieData[page],
+                onClickImage = {
+                    isExpanded = !isExpanded
                 }
-                .background(color = Color.White)
-                .padding(top = 32.dp, start = 32.dp, end = 32.dp),
-            page = page,
-            movie = movieData[page]
-        )
+            )
+        }
+    } else {
+        MovieDetail(movieData[pagerState.currentPage]) {
+            isExpanded = !isExpanded
+        }
     }
 }
 
 @Composable
-fun MovieCard(modifier: Modifier, page: Int, movie: MovieItem) {
+fun MovieCard(
+    modifier: Modifier,
+    page: Int,
+    movie: MovieItem,
+    onClickImage: () -> Unit
+) {
     Box(modifier = modifier) {
         Column(
             modifier = Modifier
@@ -146,6 +177,12 @@ fun MovieCard(modifier: Modifier, page: Int, movie: MovieItem) {
                 contentDescription = "",
                 contentScale = ContentScale.FillBounds,
                 modifier = Modifier
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        onClickImage()
+                    }
                     .fillMaxWidth()
                     .height(290.dp)
                     .clip(RoundedCornerShape(100.dp))
@@ -185,14 +222,170 @@ fun BookNow(modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+fun MovieDetail(
+    movie: MovieItem,
+    onClickImage: () -> Unit,
+) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.White)
+    ) {
+        val scrollState = rememberScrollState()
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+        ) {
+            Image( // 电影海报
+                painter = painterResource(movie.resId),
+                modifier = Modifier
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        onClickImage()
+                    }
+                    .fillMaxWidth()
+                    .height(520.dp),
+                contentScale = ContentScale.FillBounds,
+                contentDescription = null
+            )
+            Text( // 电影名称
+                modifier = Modifier
+                    .padding(top = 20.dp, bottom = 20.dp)
+                    .align(Alignment.CenterHorizontally),
+                text = movie.name,
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            )
+            // 电影详细内容（演员列表，电影故事线）
+            DetailContent(movie.description)
+        }
+
+        val context = LocalContext.current
+        BookNow( // 购买按钮
+            modifier = Modifier
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) {
+                    Toast
+                        .makeText(context, "Book Now", Toast.LENGTH_SHORT)
+                        .show()
+                }
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+                .fillMaxWidth()
+                .height(60.dp)
+                .clip(RoundedCornerShape(50.dp))
+                .background(Color.Black)
+        )
+    }
+}
+
+/**
+ * 电影详细内容（演员列表，电影故事线）
+ */
+@Composable
+fun DetailContent(movieDescription: String) {
+    Column(modifier = Modifier.padding(top = 16.dp, bottom = 100.dp)) {
+        DetailSubTitle("Cast")
+        Cast()
+        DetailSubTitle("Storyline")
+        Text(
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .fillMaxWidth()
+                .wrapContentHeight(), text = movieDescription,
+            color = Color.Gray
+        )
+    }
+}
+
+/**
+ * 电影详细内容标题
+ */
+@Composable
+fun DetailSubTitle(text: String) {
+    Text(
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+        text = text,
+        style = TextStyle(
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = Color.DarkGray
+        )
+    )
+}
+
+/**
+ * 演员列表
+ */
+@Composable
+fun Cast() {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .fillMaxWidth()
+            .height(100.dp)
+            .horizontalScroll(rememberScrollState())
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(end = 24.dp)
+                .fillMaxHeight()
+                .width(100.dp)
+                .graphicsLayer {
+                    clip = true
+                    shape = RoundedCornerShape(10.dp)
+                }
+                .background(Color.LightGray)
+        )
+        Box(
+            modifier = Modifier
+                .padding(end = 24.dp)
+                .fillMaxHeight()
+                .width(100.dp)
+                .graphicsLayer {
+                    clip = true
+                    shape = RoundedCornerShape(10.dp)
+                }
+                .background(Color.LightGray)
+        )
+        Box(
+            modifier = Modifier
+                .padding(end = 24.dp)
+                .fillMaxHeight()
+                .width(100.dp)
+                .graphicsLayer {
+                    clip = true
+                    shape = RoundedCornerShape(10.dp)
+                }
+                .background(Color.LightGray)
+        )
+    }
+}
+
 @Preview(
     showBackground = true,
     showSystemUi = true,
     device = "spec:width=950px,height=2000px,orientation=portrait,dpi=429"
 )
 @Composable
-fun GreetingPreview() {
+fun MainPagePreview() {
     ComposePlaytimeTheme {
         MainPage()
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=950px,height=2000px,orientation=portrait,dpi=429"
+)
+@Composable
+fun MovieDetailPreview() {
+    ComposePlaytimeTheme {
+        MovieDetail(movieData[0]) {}
     }
 }
