@@ -6,7 +6,14 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -84,6 +91,9 @@ fun PagerState.calculateCurrentOffsetForPage(page: Int): Float {
     return (currentPage - page) + currentPageOffsetFraction
 }
 
+const val animationDuration = 2000
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainPage(modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { movieData.size })
@@ -120,91 +130,144 @@ fun MainPage(modifier: Modifier = Modifier) {
     }
 
     var isExpanded by remember { mutableStateOf(false) }
-    if (!isExpanded) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = modifier.fillMaxSize(),
-            verticalAlignment = Alignment.Bottom,
-            pageSpacing = 20.dp,
-            contentPadding = PaddingValues(horizontal = 50.dp)
-        ) { page ->
-
-            val pageOffset = pagerState.calculateCurrentOffsetForPage(page)
-            MovieCard(
-                modifier = Modifier
-                    .padding(bottom = lerp(96.dp, 56.dp, pageOffset.absoluteValue))
-                    .width(260.dp)
-                    .height(480.dp)
-                    .graphicsLayer {
-                        clip = true
-                        shape = RoundedCornerShape(130.dp)
-                        shadowElevation = 30f
-                        spotShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
-                        ambientShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
-                        scaleY = lerp(1f, 0.9f, pageOffset.absoluteValue)
+    SharedTransitionLayout {
+        AnimatedContent(
+            targetState = isExpanded,
+            label = "basic transition"
+        ) { targetState ->
+            if (!targetState) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.Bottom,
+                    pageSpacing = 20.dp,
+                    contentPadding = PaddingValues(horizontal = 50.dp)
+                ) { page ->
+                    val pageOffset = pagerState.calculateCurrentOffsetForPage(page)
+                    val cardCornerAnimation by
+                    (this@AnimatedContent as AnimatedVisibilityScope).transition.animateDp(
+                        label = "movie card corner animation",
+                        transitionSpec = {
+                            tween(animationDuration)
+                        }) { state: EnterExitState ->
+                        when (state) {
+                            EnterExitState.PreEnter -> 0.dp
+                            EnterExitState.Visible -> 130.dp
+                            EnterExitState.PostExit -> 0.dp
+                        }
                     }
-                    .background(color = Color.White)
-                    .padding(top = 32.dp, start = 32.dp, end = 32.dp),
-                page = page,
-                movie = movieData[page],
-                onClickImage = {
+                    MovieCard(
+                        modifier = Modifier
+                            .padding(bottom = lerp(96.dp, 56.dp, pageOffset.absoluteValue))
+                            .width(260.dp)
+                            .height(480.dp)
+                            .sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "movie$page"),
+                                animatedVisibilityScope = this@AnimatedContent,
+                                boundsTransform = { _, _ -> tween(animationDuration) }
+                            )
+                            .graphicsLayer {
+                                clip = true
+                                shape = RoundedCornerShape(cardCornerAnimation)
+                                shadowElevation = 30f
+                                spotShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
+                                ambientShadowColor = DefaultShadowColor.copy(alpha = 0.5f)
+                                scaleY = lerp(1f, 0.9f, pageOffset.absoluteValue)
+                            }
+                            .background(color = Color.White)
+                            .padding(top = 32.dp, start = 32.dp, end = 32.dp),
+                        page = page,
+                        movie = movieData[page],
+                        onClickImage = {
+                            isExpanded = !isExpanded
+                        },
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        animatedVisibilityScope = this@AnimatedContent
+                    )
+                }
+            } else {
+                MovieDetail(
+                    page = pagerState.currentPage,
+                    movieData[pagerState.currentPage],
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this@AnimatedContent,
+                ) {
                     isExpanded = !isExpanded
                 }
-            )
-        }
-    } else {
-        MovieDetail(movieData[pagerState.currentPage]) {
-            isExpanded = !isExpanded
+            }
         }
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MovieCard(
     modifier: Modifier,
     page: Int,
     movie: MovieItem,
-    onClickImage: () -> Unit
+    onClickImage: () -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope
 ) {
-    Box(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-        ) {
-            Image(
-                painter = painterResource(movie.resId),
-                contentDescription = "",
-                contentScale = ContentScale.FillBounds,
+    val posterCornerAnimation by animatedVisibilityScope.transition.animateDp(
+        label = "movie poster corner animation",
+        transitionSpec = {
+            tween(animationDuration)
+        }) { state: EnterExitState ->
+        when (state) {
+            EnterExitState.PreEnter -> 0.dp
+            EnterExitState.Visible -> 100.dp
+            EnterExitState.PostExit -> 0.dp
+        }
+    }
+    with(sharedTransitionScope) {
+        Box(modifier = modifier) {
+            Column(
                 modifier = Modifier
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) {
-                        onClickImage()
-                    }
+                    .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .height(290.dp)
-                    .clip(RoundedCornerShape(100.dp))
-            )
-            Text(
-                text = movie.name,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+            ) {
+                Image(
+                    painter = painterResource(movie.resId),
+                    contentDescription = "",
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            onClickImage()
+                        }
+                        .sharedElement(
+                            state = rememberSharedContentState(key = "image$page"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ ->
+                                tween(durationMillis = animationDuration)
+                            },
+                        )
+                        .fillMaxWidth()
+                        .height(290.dp)
+                        .clip(RoundedCornerShape(posterCornerAnimation))
+                )
+                Text(
+                    text = movie.name,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
+            }
+            BookNow(
                 modifier = Modifier
-                    .padding(16.dp)
-                    .align(Alignment.CenterHorizontally)
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.Black)
             )
         }
-        BookNow(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(60.dp)
-                .clip(RoundedCornerShape(50.dp))
-                .background(Color.Black)
-        )
     }
 }
 
@@ -222,64 +285,109 @@ fun BookNow(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MovieDetail(
+    page: Int,
     movie: MovieItem,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onClickImage: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier.fillMaxSize().background(Color.White)
-    ) {
-        val scrollState = rememberScrollState()
-
-        Column(
+    val detailPageCornerAnimation by
+    animatedVisibilityScope.transition.animateDp(
+        label = "movie detail corner animation",
+        transitionSpec = {
+            tween(animationDuration)
+        }) { state: EnterExitState ->
+        when (state) {
+            EnterExitState.PreEnter -> 130.dp
+            EnterExitState.Visible -> 0.dp
+            EnterExitState.PostExit -> 130.dp
+        }
+    }
+    val posterCornerAnimation by animatedVisibilityScope.transition.animateDp(
+        label = "movie poster corner animation",
+        transitionSpec = {
+            tween(animationDuration)
+        }) { state: EnterExitState ->
+        when (state) {
+            EnterExitState.PreEnter -> 100.dp
+            EnterExitState.Visible -> 0.dp
+            EnterExitState.PostExit -> 100.dp
+        }
+    }
+    with(sharedTransitionScope) {
+        Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = "movie$page"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    boundsTransform = { _, _ -> tween(animationDuration) },
+                )
                 .fillMaxSize()
-                .verticalScroll(scrollState)
+                .clip(RoundedCornerShape(detailPageCornerAnimation))
+                .background(Color.White)
         ) {
-            Image( // 电影海报
-                painter = painterResource(movie.resId),
+            val scrollState = rememberScrollState()
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+            ) {
+                Image( // 电影海报
+                    painter = painterResource(movie.resId),
+                    modifier = Modifier
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            onClickImage()
+                        }
+                        .sharedElement(
+                            state = rememberSharedContentState(key = "image$page"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ ->
+                                tween(durationMillis = animationDuration)
+                            },
+                        )
+                        .fillMaxWidth()
+                        .height(520.dp)
+                        .clip(RoundedCornerShape(posterCornerAnimation)),
+                    contentScale = ContentScale.FillBounds,
+                    contentDescription = null
+                )
+                Text( // 电影名称
+                    modifier = Modifier
+                        .padding(top = 20.dp, bottom = 20.dp)
+                        .align(Alignment.CenterHorizontally),
+                    text = movie.name,
+                    style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                )
+                // 电影详细内容（演员列表，电影故事线）
+                DetailContent(movie.description)
+            }
+
+            val context = LocalContext.current
+            BookNow( // 购买按钮
                 modifier = Modifier
                     .clickable(
                         indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) {
-                        onClickImage()
+                        interactionSource = remember { MutableInteractionSource() }) {
+                        Toast
+                            .makeText(context, "Book Now", Toast.LENGTH_SHORT)
+                            .show()
                     }
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
                     .fillMaxWidth()
-                    .height(520.dp),
-                contentScale = ContentScale.FillBounds,
-                contentDescription = null
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.Black)
             )
-            Text( // 电影名称
-                modifier = Modifier
-                    .padding(top = 20.dp, bottom = 20.dp)
-                    .align(Alignment.CenterHorizontally),
-                text = movie.name,
-                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            )
-            // 电影详细内容（演员列表，电影故事线）
-            DetailContent(movie.description)
         }
-
-        val context = LocalContext.current
-        BookNow( // 购买按钮
-            modifier = Modifier
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
-                    Toast
-                        .makeText(context, "Book Now", Toast.LENGTH_SHORT)
-                        .show()
-                }
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-                .fillMaxWidth()
-                .height(60.dp)
-                .clip(RoundedCornerShape(50.dp))
-                .background(Color.Black)
-        )
     }
 }
 
@@ -386,6 +494,6 @@ fun MainPagePreview() {
 @Composable
 fun MovieDetailPreview() {
     ComposePlaytimeTheme {
-        MovieDetail(movieData[0]) {}
+//        MovieDetail(movieData[0]) {}
     }
 }
