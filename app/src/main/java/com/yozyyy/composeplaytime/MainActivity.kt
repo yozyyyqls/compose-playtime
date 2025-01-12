@@ -164,7 +164,9 @@ fun MainPage(modifier: Modifier = Modifier) {
                             .sharedBounds(
                                 sharedContentState = rememberSharedContentState(key = "movie$page"),
                                 animatedVisibilityScope = this@AnimatedContent,
-                                boundsTransform = { _, _ -> tween(animationDuration) }
+                                boundsTransform = { _, _ -> tween(animationDuration) },
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                                clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(cardCornerAnimation))
                             )
                             .graphicsLayer {
                                 clip = true
@@ -257,10 +259,20 @@ fun MovieCard(
                     modifier = Modifier
                         .padding(16.dp)
                         .align(Alignment.CenterHorizontally)
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "movie_name$page"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ -> tween(animationDuration) }
+                        )
                 )
             }
             BookNow(
                 modifier = Modifier
+                    .sharedElement(
+                        state = rememberSharedContentState(key = "booknow$page"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = {_, _ -> tween(animationDuration)}
+                    )
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(60.dp)
@@ -324,6 +336,8 @@ fun MovieDetail(
                     sharedContentState = rememberSharedContentState(key = "movie$page"),
                     animatedVisibilityScope = animatedVisibilityScope,
                     boundsTransform = { _, _ -> tween(animationDuration) },
+                    resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(detailPageCornerAnimation))
                 )
                 .fillMaxSize()
                 .clip(RoundedCornerShape(detailPageCornerAnimation))
@@ -362,7 +376,12 @@ fun MovieDetail(
                 Text( // 电影名称
                     modifier = Modifier
                         .padding(top = 20.dp, bottom = 20.dp)
-                        .align(Alignment.CenterHorizontally),
+                        .align(Alignment.CenterHorizontally)
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "movie_name$page"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ -> tween(animationDuration) }
+                        ),
                     text = movie.name,
                     style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 )
@@ -380,8 +399,13 @@ fun MovieDetail(
                             .makeText(context, "Book Now", Toast.LENGTH_SHORT)
                             .show()
                     }
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp)
+                    .sharedElement(
+                        state = rememberSharedContentState(key = "booknow$page"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = {_, _ -> tween(animationDuration)},
+                    )
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(60.dp)
                     .clip(RoundedCornerShape(50.dp))
